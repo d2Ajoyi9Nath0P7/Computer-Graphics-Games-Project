@@ -1,0 +1,175 @@
+#include <graphics.h>
+#include <conio.h>
+#include <dos.h>
+
+#define MAX_ENEMIES 4
+
+// Player variables
+int playerX, playerY;
+int playerWidth = 50, playerHeight = 20;
+
+// Bullet variables
+int bulletX, bulletY;
+bool bulletActive = false;
+int bulletSpeed = 30;
+
+// Enemy variables
+struct Enemy
+{
+    int x, y;
+    bool alive;
+    int radius;
+} enemies[MAX_ENEMIES];
+
+
+int enemySpeed = 10;
+
+
+void initGame() 
+{
+    playerX = 250;
+    playerY = getmaxy() - 50;
+    
+    bulletActive = false;
+
+    // Initialize enemies at random x positions at top
+    for(int i = 0; i < MAX_ENEMIES; i++) 
+	{
+        enemies[i].x = 50 + i * 150;//ene[i].x = 50 + i * 120
+        enemies[i].y = 50;//ene[i].y = 50;
+        enemies[i].alive = true;//
+        enemies[i].radius = 30;//
+    }
+}	
+
+// Draw player as rectangle
+void drawPlayer() 
+{
+    setcolor(RED);//boundary color
+    rectangle(playerX, playerY, playerX + playerWidth, playerY + playerHeight);//(X1,Y1,X2,Y2)
+    setfillstyle(SOLID_FILL, WHITE);//
+    floodfill(playerX + 1, playerY + 1, RED);//red
+}
+
+// Draw bullet as small rectangle
+void drawBullet() 
+{
+    if(bulletActive) 
+	{
+        setcolor(YELLOW);
+        rectangle(bulletX, bulletY, bulletX + 5, bulletY + 10);
+        setfillstyle(SOLID_FILL, RED);
+        floodfill(bulletX + 1, bulletY + 1, YELLOW);
+    }
+}
+
+// Draw enemies as circles
+void drawEnemies() 
+{
+    for (int i = 0; i < MAX_ENEMIES; i++) 
+	{
+        if (enemies[i].alive) 
+		{
+            setcolor(RED);//border color
+            circle(enemies[i].x, enemies[i].y, enemies[i].radius);//
+            setfillstyle(SOLID_FILL, YELLOW);
+            floodfill(enemies[i].x, enemies[i].y, RED);
+        }
+    }
+}
+
+// Check collision between bullet and enemy (circle-rectangle approx)
+bool checkCollision(int bx, int by, int bw, int bh, int cx, int cy, int cr) {
+    // Find closest point to circle center inside rectangle
+    int closestX = (bx > cx) ? bx : (bx + bw < cx) ? bx + bw : cx;
+    int closestY = (by > cy) ? by : (by + bh < cy) ? by + bh : cy;
+
+    // Calculate distance between circle center and closest point
+    int dx = cx - closestX;
+    int dy = cy - closestY;
+
+    return (dx * dx + dy * dy) <= (cr * cr);
+}
+
+int main() {
+    int gd = DETECT, gm;
+    initgraph(&gd, &gm, "");
+
+    initGame();
+
+    while (!kbhit()) {
+        cleardevice();
+
+        // Draw all elements
+        drawPlayer();////
+        drawEnemies();////
+        drawBullet();
+
+        // Move bullet
+        if(bulletActive) 
+		{
+            bulletY -= bulletSpeed;//300 -= 20
+            if (bulletY < 0)
+			{
+            	 bulletActive = false;	
+			}
+        }
+
+        // Move enemies down
+        for (int i = 0; i < MAX_ENEMIES; i++) 
+		{
+            if (enemies[i].alive)
+			{
+                enemies[i].y += enemySpeed;
+                if (enemies[i].y > getmaxy()) 
+				{
+                    enemies[i].y = 0;  // Reset enemy to top
+                }
+            }
+        }
+
+        // Check bullet collision with enemies
+        if(bulletActive) 
+		{
+            for(int i = 0; i < MAX_ENEMIES; i++) 
+			{
+                if (enemies[i].alive) 
+				{
+                    if(checkCollision(bulletX, bulletY, 5, 10, enemies[i].x, enemies[i].y, enemies[i].radius)) 
+					{
+                        enemies[i].alive = false;
+                        bulletActive = false;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Handle player input (non-blocking)
+        if (kbhit()) {
+            char ch = getch();
+            if (ch == 'a' || ch == 'A') {
+                playerX -= 15;
+                if (playerX < 0) playerX = 0;
+            }
+            else if (ch == 'd' || ch == 'D') {
+                playerX += 15;
+                if (playerX + playerWidth > getmaxx()) playerX = getmaxx() - playerWidth;
+            }
+            else if (ch == ' ' && !bulletActive) {
+                // Shoot bullet from middle top of player
+                bulletX = playerX + playerWidth / 2;
+                bulletY = playerY;
+                bulletActive = true;
+            }
+            else if (ch == 27) {  // ESC key to exit
+                break;
+            }
+        }
+
+        delay(50);
+    }
+
+    closegraph();
+    return 0;
+}
